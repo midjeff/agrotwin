@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agro-Twin · Мониторинг полей</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<!-- Dashboard styles -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+<!-- ─── НАВБАР ──────────────────────────────────────────────────────── -->
+<nav class="db-nav">
+  <!-- Кнопка назад на лендинг -->
+  <a href="/" class="db-back">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2.5">
+      <polyline points="15,18 9,12 15,6"/>
+    </svg>
+    На главную
+  </a>
+
+  <div class="db-divider"></div>
+
+  <a href="/" class="db-logo">AGRO<span>·</span>TWIN</a>
+  <span class="db-breadcrumb">/ МОНИТОРИНГ</span>
+
+  <div class="db-divider"></div>
+
+  <span class="db-subtitle">VMAE + TSN Dynamics + Kalman Filter</span>
+
+  <div class="db-status">
+    <div class="db-dot"></div>
+    LIVE · Sentinel-2 / MODIS / SMAP
+  </div>
+</nav>
+
+<!-- ─── INFO BAR ────────────────────────────────────────────────────── -->
+<div class="info-bar">
+  <div class="info-chip">
+    <span class="chip-label">ПОЛЕ</span>
+    <span class="chip-val" id="chip-field">—</span>
+  </div>
+  <div class="info-chip">
+    <span class="chip-label">КУЛЬТУРА</span>
+    <span class="chip-val" id="chip-crop">—</span>
+  </div>
+  <div class="info-chip">
+    <span class="chip-label">ПЛОЩАДЬ</span>
+    <span class="chip-val" id="chip-area">—</span>
+  </div>
+  <div class="info-chip">
+    <span class="chip-label">NDVI</span>
+    <span class="chip-val" id="chip-ndvi">—</span>
+  </div>
+  <div class="info-chip">
+    <span class="chip-label">АНОМАЛИЯ</span>
+    <span class="chip-val" id="chip-anomaly">—</span>
+  </div>
+  <div class="info-chip" style="margin-left:auto;">
+    <span class="chip-label">VMAE ACCURACY</span>
+    <span class="chip-val good">92.99%</span>
+  </div>
+  <div class="info-chip">
+    <span class="chip-label">TSN ACCURACY</span>
+    <span class="chip-val good">95.88%</span>
+  </div>
+</div>
+
+<!-- ─── ГЛАВНАЯ СЕТКА ───────────────────────────────────────────────── -->
+<div class="grid-main">
+
+  <!-- БЛОК 1: КАРТА -->
+  <div class="card block-map">
+    <div class="card-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="var(--accent)" stroke-width="2">
+        <polygon points="3,6 9,3 15,6 21,3 21,18 15,21 9,18 3,21"/>
+      </svg>
+      <span class="card-title">Интерактивная карта полей</span>
+      <span class="card-badge" id="layer-label">RAW NDVI</span>
+    </div>
+    <div class="card-body">
+      <div id="map"></div>
+      <div class="layer-controls">
+        <button class="layer-btn active" onclick="setLayer('raw')">Raw NDVI</button>
+        <button class="layer-btn" onclick="setLayer('twin')">Digital Twin</button>
+        <button class="layer-btn" onclick="setLayer('anomaly')">Anomaly Score</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- БЛОК 2: WHAT-IF -->
+  <div class="card block-whatif">
+    <div class="card-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="var(--accent2)" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      <span class="card-title">Сценарное моделирование «What-if»</span>
+      <span class="card-badge"
+            style="color:var(--accent2);
+                   border-color:rgba(251,146,60,0.3);
+                   background:rgba(251,146,60,0.1);">
+        TSN DYNAMICS
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="whatif-body">
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">🌡️ ТЕМПЕРАТУРА (Δ°C)</span>
+            <span class="slider-val" id="temp-val">+0.0°C</span>
+          </div>
+          <input type="range" id="temp-slider"
+                 min="-5" max="5" step="0.5" value="0"
+                 oninput="updateSlider('temp')">
+          <div style="display:flex; justify-content:space-between;
+                      color:var(--text-muted); font-size:10px;">
+            <span>-5°C</span><span>0</span><span>+5°C</span>
+          </div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">🌧️ ОСАДКИ (Δ%)</span>
+            <span class="slider-val" id="precip-val">+0%</span>
+          </div>
+          <input type="range" id="precip-slider"
+                 min="-50" max="50" step="5" value="0"
+                 oninput="updateSlider('precip')">
+          <div style="display:flex; justify-content:space-between;
+                      color:var(--text-muted); font-size:10px;">
+            <span>-50%</span><span>0</span><span>+50%</span>
+          </div>
+        </div>
+
+        <button class="run-btn" id="run-btn" onclick="runScenario()">
+          ▶ ЗАПУСТИТЬ СЦЕНАРИЙ
+        </button>
+
+        <div class="scenario-result" id="scenario-result">
+          <div class="result-label">Scenario NDVI · Прогноз:</div>
+          <div class="result-vals" id="scenario-summary">—</div>
+        </div>
+
+        <div style="margin-top:auto; padding:8px;
+                    background:var(--bg-card2); border-radius:6px;
+                    border:1px solid var(--border);">
+          <div style="font-size:10px; color:var(--text-muted); margin-bottom:4px;">
+            KALMAN FILTER STATUS
+          </div>
+          <div style="display:flex; gap:4px;">
+            <div style="flex:1;height:3px;border-radius:2px;
+                        background:var(--accent);animation:dotPulse 2s infinite;"></div>
+            <div style="flex:1;height:3px;border-radius:2px;
+                        background:var(--accent);animation:dotPulse 2s 0.3s infinite;"></div>
+            <div style="flex:1;height:3px;border-radius:2px;
+                        background:var(--accent);animation:dotPulse 2s 0.6s infinite;"></div>
+          </div>
+          <div style="font-size:10px; color:var(--accent); margin-top:4px;">
+            Active · Noise correction ON
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- БЛОК 3: ЛАТЕНТНЫЙ АНАЛИЗ -->
+  <div class="card block-latent">
+    <div class="card-header">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="var(--accent3)" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="4"/>
+        <line x1="12" y1="2" x2="12" y2="8"/>
+        <line x1="12" y1="16" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="8" y2="12"/>
+        <line x1="16" y1="12" x2="22" y2="12"/>
+      </svg>
+      <span class="card-title">Латентный анализ VMAE Core</span>
+      <span class="card-badge"
+            style="color:var(--accent3);
+                   border-color:rgba(251,191,36,0.3);
+                   background:rgba(251,191,36,0.1);">
+        Z₁ — Z₂
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="latent-body">
+        <canvas id="latent-chart"></canvas>
+        <div class="loading-overlay" id="latent-loading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /grid-main -->
+
+<!-- БЛОК 4: ВРЕМЕННОЙ РЯД -->
+<div class="card block-timeseries" style="margin:2px;">
+  <div class="card-header">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+         stroke="var(--raw-line)" stroke-width="2">
+      <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>
+    </svg>
+    <span class="card-title">Динамика и прогноз NDVI</span>
+    <span class="card-badge">SENTINEL-2 · MODIS</span>
+    <div class="legend" style="margin-left:auto; border:none; padding:0;">
+      <div class="legend-item">
+        <div class="legend-line"
+             style="border-top:2px dashed var(--raw-line);background:none;"></div>
+        Raw NDVI
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:var(--twin-line);"></div>
+        Digital Twin
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:var(--scen-line);"></div>
+        Scenario
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="timeseries-body">
+      <canvas id="timeseries-chart"></canvas>
+      <div class="loading-overlay" id="ts-loading">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── JAVASCRIPT ──────────────────────────────────────────────────── -->
+<script>
+// ═══════════════════════════════════════════════════════
+// СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+// ═══════════════════════════════════════════════════════
+const state = {
+  selectedFieldId: null,
+  currentLayer: 'raw',
+  scenarioData: null,
+  fieldsData: null,
+};
+
+// ═══════════════════════════════════════════════════════
+// 1. КАРТА (Leaflet)
+// ═══════════════════════════════════════════════════════
+const map = L.map('map', {
+  center: [51.22, 71.47],
+  zoom: 12,
+  zoomControl: true,
+});
+
+L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Esri · Sentinel-2 overlay', maxZoom: 19 }
+).addTo(map);
+
+let fieldsLayer = null;
+
+function ndviColor(ndvi, layer) {
+  if (layer === 'anomaly') {
+    const v = ndvi;
+    const r = Math.round(255 * v);
+    const g = Math.round(50 * (1 - v));
+    return `rgba(${r},${g},50,0.6)`;
+  }
+  const t = Math.max(0, Math.min(1, ndvi));
+  if (t < 0.5) {
+    const g = Math.round(68 + (158 - 68) * (t * 2));
+    return `rgba(239,${g},68,0.65)`;
+  } else {
+    const r = Math.round(245 - (245 - 34) * ((t - 0.5) * 2));
+    return `rgba(${r},197,34,0.65)`;
+  }
+}
+
+function loadFields() {
+  fetch('/api/fields')
+    .then(r => r.json())
+    .then(data => {
+      state.fieldsData = data;
+      renderFields();
+    });
+}
+
+function renderFields() {
+  if (fieldsLayer) { map.removeLayer(fieldsLayer); }
+
+  fieldsLayer = L.geoJSON(state.fieldsData, {
+    style: feature => {
+      const p = feature.properties;
+      const val = state.currentLayer === 'anomaly' ? p.anomaly : p.ndvi;
+      return {
+        fillColor: ndviColor(val, state.currentLayer),
+        fillOpacity: 0.7,
+        color: state.selectedFieldId === p.id ? '#f97316' : '#3d2a10',
+        weight: state.selectedFieldId === p.id ? 3 : 1.5,
+      };
+    },
+    onEachFeature: (feature, layer) => {
+      const p = feature.properties;
+
+      layer.on('click', () => {
+        state.selectedFieldId = p.id;
+        renderFields();
+        updateInfoBar(p);
+        loadDynamics(p.id);
+        loadLatent(p.id);
+        layer.openPopup();
+      });
+
+      const anomalyClass = p.anomaly > 0.5 ? 'danger' : p.anomaly > 0.25 ? 'warn' : 'good';
+      const ndviPct = Math.round(p.ndvi * 100);
+
+      layer.bindPopup(`
+        <div style="min-width:200px;">
+          <div class="popup-title">📍 ${p.name}</div>
+          <div class="popup-row">
+            <span class="popup-label">Культура</span>
+            <span class="popup-val">${p.crop}</span>
+          </div>
+          <div class="popup-row">
+            <span class="popup-label">Площадь</span>
+            <span class="popup-val">${p.area_ha} га</span>
+          </div>
+          <div class="popup-row">
+            <span class="popup-label">NDVI</span>
+            <span class="popup-val" style="color:#f97316">${p.ndvi.toFixed(3)}</span>
+          </div>
+          <div class="popup-row">
+            <span class="popup-label">Аномалия</span>
+            <span class="popup-val" style="color:${
+              anomalyClass==='danger' ? '#ef4444' :
+              anomalyClass==='warn'   ? '#fbbf24' : '#22c55e'
+            }">
+              ${(p.anomaly * 100).toFixed(0)}%
+            </span>
+          </div>
+          <div class="ndvi-bar">
+            <div class="ndvi-marker" style="left:${ndviPct}%"></div>
+          </div>
+        </div>
+      `);
+    }
+  }).addTo(map);
+}
+
+function setLayer(layerName) {
+  state.currentLayer = layerName;
+  document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('layer-label').textContent =
+    { raw: 'RAW NDVI', twin: 'DIGITAL TWIN', anomaly: 'ANOMALY SCORE' }[layerName];
+  renderFields();
+}
+
+// ═══════════════════════════════════════════════════════
+// 2. INFO BAR
+// ═══════════════════════════════════════════════════════
+function updateInfoBar(props) {
+  document.getElementById('chip-field').textContent = props.name;
+  document.getElementById('chip-crop').textContent  = props.crop;
+  document.getElementById('chip-area').textContent  = props.area_ha + ' га';
+
+  const ndviEl = document.getElementById('chip-ndvi');
+  ndviEl.textContent = props.ndvi.toFixed(3);
+  ndviEl.className = 'chip-val ' +
+    (props.ndvi > 0.6 ? 'good' : props.ndvi > 0.4 ? 'warn' : 'danger');
+
+  const anEl = document.getElementById('chip-anomaly');
+  anEl.textContent = (props.anomaly * 100).toFixed(0) + '%';
+  anEl.className = 'chip-val ' +
+    (props.anomaly < 0.25 ? 'good' : props.anomaly < 0.5 ? 'warn' : 'danger');
+}
+
+// ═══════════════════════════════════════════════════════
+// 3. СЛАЙДЕРЫ WHAT-IF
+// ═══════════════════════════════════════════════════════
+function updateSlider(type) {
+  if (type === 'temp') {
+    const v = parseFloat(document.getElementById('temp-slider').value);
+    document.getElementById('temp-val').textContent =
+      (v >= 0 ? '+' : '') + v.toFixed(1) + '°C';
+  } else {
+    const v = parseFloat(document.getElementById('precip-slider').value);
+    document.getElementById('precip-val').textContent =
+      (v >= 0 ? '+' : '') + v + '%';
+  }
+}
+
+function runScenario() {
+  if (!state.selectedFieldId) {
+    alert('Сначала выберите поле на карте!');
+    return;
+  }
+
+  const btn = document.getElementById('run-btn');
+  btn.classList.add('loading');
+  btn.textContent = '⏳ МОДЕЛИРОВАНИЕ...';
+
+  const deltaTemp   = parseFloat(document.getElementById('temp-slider').value);
+  const deltaPrecip = parseFloat(document.getElementById('precip-slider').value);
+
+  fetch(`/api/field/${state.selectedFieldId}/scenario`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ delta_temp: deltaTemp, delta_precip: deltaPrecip })
+  })
+    .then(r => r.json())
+    .then(data => {
+      state.scenarioData = data;
+      updateTimeseriesChart(data);
+
+      const avgNDVI = (
+        data.scenario_ndvi.reduce((a, b) => a + b, 0) /
+        data.scenario_ndvi.length
+      ).toFixed(3);
+
+      document.getElementById('scenario-summary').textContent =
+        `Avg NDVI = ${avgNDVI} · Δtemp ${deltaTemp > 0 ? '+' : ''}${deltaTemp}°C · Δprecip ${deltaPrecip > 0 ? '+' : ''}${deltaPrecip}%`;
+
+      document.getElementById('scenario-result').classList.add('visible');
+    })
+    .finally(() => {
+      btn.classList.remove('loading');
+      btn.textContent = '▶ ЗАПУСТИТЬ СЦЕНАРИЙ';
+    });
+}
+
+// ═══════════════════════════════════════════════════════
+// 4. ГРАФИК ВРЕМЕННОГО РЯДА
+// ═══════════════════════════════════════════════════════
+let tsChart = null;
+
+function loadDynamics(fieldId) {
+  document.getElementById('ts-loading').classList.remove('hidden');
+
+  fetch(`/api/field/${fieldId}/dynamics`)
+    .then(r => r.json())
+    .then(data => { initTimeseriesChart(data); })
+    .finally(() => {
+      document.getElementById('ts-loading').classList.add('hidden');
+    });
+}
+
+function initTimeseriesChart(data) {
+  const ctx = document.getElementById('timeseries-chart').getContext('2d');
+
+  const rawPoints  = data.dates
+    .map((d, i) => data.raw_ndvi[i] !== null ? { x: d, y: data.raw_ndvi[i] } : null)
+    .filter(Boolean);
+
+  const twinPoints = data.dates.map((d, i) => ({ x: d, y: data.twin_ndvi[i] }));
+
+  if (tsChart) { tsChart.destroy(); }
+
+  tsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Raw NDVI',
+          data: rawPoints,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.08)',
+          borderDash: [4, 4],
+          pointRadius: 3,
+          pointBackgroundColor: '#3b82f6',
+          tension: 0,
+          fill: false,
+        },
+        {
+          label: 'Digital Twin NDVI',
+          data: twinPoints,
+          borderColor: '#f97316',
+          backgroundColor: 'rgba(249,115,22,0.08)',
+          pointRadius: 0,
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#161008',
+          borderColor: '#3d2a10',
+          borderWidth: 1,
+          titleColor: '#f5ede0',
+          bodyColor: '#7a6050',
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(3) ?? '—'}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'month', displayFormats: { month: 'MMM yy' } },
+          grid: { color: 'rgba(61,42,16,0.6)' },
+          ticks: { color: '#7a6050', font: { family: 'monospace', size: 10 } }
+        },
+        y: {
+          min: 0, max: 1,
+          grid: { color: 'rgba(61,42,16,0.6)' },
+          ticks: { color: '#7a6050', font: { family: 'monospace', size: 10 } }
+        }
+      }
+    }
+  });
+}
+
+function updateTimeseriesChart(scenarioData) {
+  if (!tsChart) return;
+
+  tsChart.data.datasets = tsChart.data.datasets.filter(d => d.label !== 'Scenario NDVI');
+
+  const scenPoints = scenarioData.dates.map((d, i) => ({
+    x: d, y: scenarioData.scenario_ndvi[i]
+  }));
+
+  tsChart.data.datasets.push({
+    label: 'Scenario NDVI',
+    data: scenPoints,
+    borderColor: '#fbbf24',
+    backgroundColor: 'rgba(251,191,36,0.05)',
+    pointRadius: 0,
+    borderWidth: 2,
+    borderDash: [6, 3],
+    tension: 0.4,
+    fill: false,
+  });
+
+  tsChart.update();
+}
+
+// ═══════════════════════════════════════════════════════
+// 5. SCATTER PLOT ЛАТЕНТНОГО ПРОСТРАНСТВА
+// ═══════════════════════════════════════════════════════
+let latentChart = null;
+
+function loadLatent(fieldId) {
+  document.getElementById('latent-loading').classList.remove('hidden');
+
+  fetch(`/api/field/${fieldId}/latent_space`)
+    .then(r => r.json())
+    .then(data => { initLatentChart(data); })
+    .finally(() => {
+      document.getElementById('latent-loading').classList.add('hidden');
+    });
+}
+
+function initLatentChart(data) {
+  const ctx = document.getElementById('latent-chart').getContext('2d');
+
+  const points = data.points.map((p, i) => ({
+    x: p.z1, y: p.z2,
+    ndvi: p.ndvi,
+    date: p.date,
+    idx: i,
+  }));
+
+  if (latentChart) { latentChart.destroy(); }
+
+  latentChart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Поле',
+        data: points,
+        pointRadius: ctx2 => ctx2.dataIndex === points.length - 1 ? 8 : 5,
+        pointBackgroundColor: points.map(p => {
+          if (p.ndvi > 0.65) return '#22c55e';
+          if (p.ndvi > 0.45) return '#fbbf24';
+          return '#ef4444';
+        }),
+        pointBorderColor: 'rgba(255,255,255,0.15)',
+        pointBorderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#161008',
+          borderColor: '#3d2a10',
+          borderWidth: 1,
+          callbacks: {
+            title: items => points[items[0].dataIndex].date,
+            label: items => {
+              const p = points[items[0].dataIndex];
+              return [
+                ` Z₁ (биомасса): ${p.x.toFixed(3)}`,
+                ` Z₂ (стресс): ${p.y.toFixed(3)}`,
+                ` NDVI: ${p.ndvi.toFixed(3)}`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Z₁ — Накопление биомассы',
+            color: '#7a6050',
+            font: { family: 'monospace', size: 10 }
+          },
+          grid: { color: 'rgba(61,42,16,0.6)' },
+          ticks: { color: '#7a6050', font: { family: 'monospace', size: 9 } }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Z₂ — Биофизический стресс',
+            color: '#7a6050',
+            font: { family: 'monospace', size: 10 }
+          },
+          grid: { color: 'rgba(61,42,16,0.6)' },
+          ticks: { color: '#7a6050', font: { family: 'monospace', size: 9 } }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// ЗАПУСК
+// ═══════════════════════════════════════════════════════
+loadFields();
+</script>
+</body>
+</html>
