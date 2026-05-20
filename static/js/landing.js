@@ -158,6 +158,7 @@ let currentLang = 'ru';
 
 function setLang(lang) {
   currentLang = lang;
+  localStorage.setItem('agrotwin_lang', lang);
 
   /* Кнопки переключателя */
   document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -217,5 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavScroll();
   initScrollAnimations();
   initAccuracyBars();
-  setLang('ru');   /* применить дефолтный язык */
+  /* Восстанавливаем сохранённый язык, дефолт — ru */
+  const saved = localStorage.getItem('agrotwin_lang') || 'ru';
+  setLang(saved);
 });

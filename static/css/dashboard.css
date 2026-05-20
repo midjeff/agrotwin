@@ -5,25 +5,25 @@
 
 /* ─── ТОКЕНЫ (синхронизированы с landing.css) ─────────────── */
 :root {
-  --bg-base:    #0c0900;
-  --bg-card:    #161008;
-  --bg-card2:   #201810;
-  --border:     #3d2a10;
-  --accent:     #f97316;
-  --accent2:    #fb923c;
-  --accent3:    #fbbf24;
-  --danger:     #ef4444;
-  --text:       #f5ede0;
-  --text-muted: #7a6050;
+  --bg-base:    #f4f7f0;
+  --bg-card:    #ffffff;
+  --bg-card2:   #edf2e8;
+  --border:     #c8d9bc;
+  --accent:     #3a7d44;
+  --accent2:    #5a9e5f;
+  --accent3:    #8db548;
+  --danger:     #c0392b;
+  --text:       #1e2d1a;
+  --text-muted: #6b8060;
 
   /* Линии графика */
-  --twin-line:  #f97316;
-  --raw-line:   #3b82f6;
-  --scen-line:  #fbbf24;
+  --twin-line:  #3a7d44;
+  --raw-line:   #2563eb;
+  --scen-line:  #8db548;
 
   /* RGB для rgba() */
-  --accent-rgb: 249, 115, 22;
-  --bg-rgb:     12, 9, 0;
+  --accent-rgb: 58, 125, 68;
+  --bg-rgb:     244, 247, 240;
 
   --radius: 10px;
 }
@@ -140,7 +140,35 @@ body {
   50%       { opacity: 0.7; box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0); }
 }
 
-/* ─── INFO BAR ─────────────────────────────────────────────── */
+/* ─── LANG TOGGLE (дашборд) ────────────────────────────────── */
+.db-lang-toggle {
+  display: flex;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.db-lang-btn {
+  padding: 5px 12px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.db-lang-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ─── CHIP COLORS ──────────────────────────────────────────── */
 .info-bar {
   display: flex;
   gap: 2px;
@@ -168,8 +196,8 @@ body {
   color: var(--text);
 }
 
-.chip-val.good   { color: #22c55e; }
-.chip-val.warn   { color: var(--accent3); }
+.chip-val.good   { color: #2d7a35; }
+.chip-val.warn   { color: #b45309; }
 .chip-val.danger { color: var(--danger); }
 
 /* ─── ГЛАВНАЯ СЕТКА ────────────────────────────────────────── */
