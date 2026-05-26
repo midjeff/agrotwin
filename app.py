@@ -4,11 +4,88 @@ Agro-Twin — главный файл Flask-приложения.
 Открыть в браузере: http://localhost:5000
 """
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, flash
 import random
 import math
+import hashlib
+import os
+import json
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "agro-twin-secret-2024")
+
+# ─── Демо-пользователи (логин: хэш пароля, роль) ──────────────────────────────
+# Пароли: admin → admin123, viewer → viewer123
+def _hash(pw):
+    return hashlib.sha256(pw.encode()).hexdigest()
+
+USERS = {
+    "admin":  {"password": _hash("admin123"),  "role": "admin",  "name": "Администратор"},
+    "viewer": {"password": _hash("viewer123"), "role": "viewer", "name": "Наблюдатель"},
+}
+
+def current_user():
+    return session.get("user")
+
+def login_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user():
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ─── Авторизация ───────────────────────────────────────────────────────────────
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user():
+        return redirect(url_for("index"))
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip().lower()
+        password = request.form.get("password", "")
+        user = USERS.get(username)
+        if user and user["password"] == _hash(password):
+            session["user"] = {"username": username, "role": user["role"], "name": user["name"]}
+            return redirect(url_for("index"))
+        error = "Неверный логин или пароль"
+    return render_template("login.html", error=error)
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if current_user():
+        return redirect(url_for("index"))
+    error = None
+    success = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm  = request.form.get("confirm",  "")
+        if not username or not password:
+            error = "Заполните все поля"
+        elif len(username) < 3:
+            error = "Логин должен быть не менее 3 символов"
+        elif len(password) < 6:
+            error = "Пароль должен быть не менее 6 символов"
+        elif password != confirm:
+            error = "Пароли не совпадают"
+        elif username in USERS:
+            error = "Пользователь с таким логином уже существует"
+        else:
+            USERS[username] = {"password": _hash(password), "role": "viewer", "name": username.capitalize()}
+            success = "Аккаунт создан! Войдите."
+    return render_template("register.html", error=error, success=success)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
 
 # ─── Страницы ──────────────────────────────────────────────────────────────────
 
@@ -17,86 +94,31 @@ def landing():
     return render_template("landing.html")
 
 @app.route("/monitoring")
+@login_required
 def index():
-    return render_template("index.html")
+    return render_template("index.html", user=current_user())
 
 
 # ─── API: Список полей (GeoJSON) ───────────────────────────────────────────────
 
 @app.route("/api/fields")
+@login_required
 def get_fields():
     """
-    Возвращает GeoJSON с полигонами полей.
-    В реальном проекте — читай из БД или .geojson файла.
+    Возвращает реальные полигоны 23 полей (Северный Казахстан, ТОО).
+    Читает static/polygons.json по абсолютному пути относительно app.py.
     """
-    fields = {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {
-                    "id": "field_01",
-                    "name": "Поле А-01",
-                    "crop": "Пшеница",
-                    "area_ha": 142.5,
-                    "ndvi": 0.72,
-                    "anomaly": 0.15
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[
-                        [71.42, 51.18], [71.46, 51.18],
-                        [71.46, 51.21], [71.42, 51.21],
-                        [71.42, 51.18]
-                    ]]
-                }
-            },
-            {
-                "type": "Feature",
-                "properties": {
-                    "id": "field_02",
-                    "name": "Поле Б-02",
-                    "crop": "Ячмень",
-                    "area_ha": 89.3,
-                    "ndvi": 0.54,
-                    "anomaly": 0.63
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[
-                        [71.48, 51.18], [71.53, 51.18],
-                        [71.53, 51.22], [71.48, 51.22],
-                        [71.48, 51.18]
-                    ]]
-                }
-            },
-            {
-                "type": "Feature",
-                "properties": {
-                    "id": "field_03",
-                    "name": "Поле В-03",
-                    "crop": "Рапс",
-                    "area_ha": 201.0,
-                    "ndvi": 0.81,
-                    "anomaly": 0.08
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[
-                        [71.42, 51.23], [71.47, 51.23],
-                        [71.47, 51.27], [71.42, 51.27],
-                        [71.42, 51.23]
-                    ]]
-                }
-            }
-        ]
-    }
-    return jsonify(fields)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    geojson_path = os.path.join(base_dir, "static", "polygons.json")
+    with open(geojson_path, encoding="utf-8") as f:
+        data = json.load(f)
+    return jsonify(data)
 
 
 # ─── API: Динамика NDVI для поля ──────────────────────────────────────────────
 
 @app.route("/api/field/<field_id>/dynamics")
+@login_required
 def get_dynamics(field_id):
     """
     Возвращает временные ряды: Raw NDVI + Digital Twin NDVI.
@@ -137,6 +159,7 @@ def get_dynamics(field_id):
 # ─── API: Латентное пространство Z1-Z2 ────────────────────────────────────────
 
 @app.route("/api/field/<field_id>/latent_space")
+@login_required
 def get_latent_space(field_id):
     """
     Возвращает траекторию поля в латентном пространстве VMAE (Z1, Z2).
@@ -167,6 +190,7 @@ def get_latent_space(field_id):
 # ─── API: What-if сценарий ─────────────────────────────────────────────────────
 
 @app.route("/api/field/<field_id>/scenario", methods=["POST"])
+@login_required
 def run_scenario(field_id):
     """
     Принимает delta_temp и delta_precip, возвращает Scenario NDVI.
@@ -210,5 +234,8 @@ if __name__ == "__main__":
     print("=" * 50)
     print("  Agro-Twin запущен!")
     print("  Открой в браузере: http://localhost:5000")
+    print("  Демо-аккаунты:")
+    print("    admin   / admin123  (полный доступ)")
+    print("    viewer  / viewer123 (только просмотр)")
     print("=" * 50)
     app.run(debug=True, port=5000)

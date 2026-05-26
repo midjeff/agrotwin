@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agro-Twin · Регистрация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ─── TOKENS (синхронизированы с landing.css) ─── */
+    :root {
+      --bg:        #f4f7f0;
+      --bg-card:   #ffffff;
+      --bg-card2:  #edf2e8;
+      --border:    #c8d9bc;
+      --accent:    #3a7d44;
+      --accent2:   #5a9e5f;
+      --accent3:   #8db548;
+      --danger:    #c0392b;
+      --success:   #2d7d46;
+      --text:      #1e2d1a;
+      --muted:     #6b8060;
+      --radius:    10px;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --font-display: 'Inter', system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ─── Фоновая сетка ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* ─── Декоративные пятна ─── */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      opacity: 0.18;
+    }
+    .blob-1 { width: 400px; height: 400px; background: var(--accent3); top: -100px; right: -100px; }
+    .blob-2 { width: 300px; height: 300px; background: var(--accent);  bottom: -80px; left: -80px; }
+
+    /* ─── Логотип в углу ─── */
+    .corner-logo {
+      position: fixed;
+      top: 24px; left: 28px;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 16px;
+      letter-spacing: 3px;
+      color: var(--accent);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .corner-logo span { color: var(--muted); }
+
+    /* ─── Карточка ─── */
+    .auth-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 44px 40px 36px;
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 4px 32px rgba(58,125,68,0.08);
+      animation: slideUp 0.4s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-badge {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 10px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    .auth-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 26px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .auth-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    /* ─── Форма ─── */
+    .field { margin-bottom: 18px; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(58,125,68,0.12);
+    }
+
+    .field-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    /* ─── Кнопка ─── */
+    .btn-submit {
+      width: 100%;
+      margin-top: 8px;
+      padding: 13px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-submit:hover  { background: var(--accent2); }
+    .btn-submit:active { transform: scale(0.98); }
+
+    /* ─── Уведомления ─── */
+    .error-box {
+      background: rgba(192,57,43,0.08);
+      border: 1px solid rgba(192,57,43,0.3);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      color: var(--danger);
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .success-box {
+      background: rgba(45,125,70,0.08);
+      border: 1px solid rgba(45,125,70,0.3);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      color: var(--success);
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─── Роль-инфо ─── */
+    .role-info {
+      margin-top: 8px;
+      padding: 10px 14px;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─── Разделитель ─── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+
+    .auth-footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .auth-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .auth-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <a href="/" class="corner-logo">AGRO<span>·</span>TWIN</a>
+
+  <div class="auth-card">
+    <div class="auth-badge">🌿 Agro-Twin Platform</div>
+    <div class="auth-title">Регистрация</div>
+    <div class="auth-sub">Создайте аккаунт для доступа к мониторингу</div>
+
+    {% if error %}
+    <div class="error-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {{ error }}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="success-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>
+      {{ success }} <a href="/login" style="color:var(--success);font-weight:700;margin-left:4px">Войти →</a>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/register">
+      <div class="field">
+        <label>Логин</label>
+        <input type="text" name="username" placeholder="Ваш логин" autocomplete="username"
+               minlength="3" required>
+        <div class="field-hint">Минимум 3 символа, только латиница</div>
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <input type="password" name="password" placeholder="••••••••"
+               autocomplete="new-password" minlength="6" required>
+        <div class="field-hint">Минимум 6 символов</div>
+      </div>
+      <div class="field">
+        <label>Подтвердите пароль</label>
+        <input type="password" name="confirm" placeholder="••••••••"
+               autocomplete="new-password" minlength="6" required>
+      </div>
+
+      <div class="role-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Новым пользователям присваивается роль <strong style="color:var(--accent);margin:0 3px">Viewer</strong> (просмотр)
+      </div>
+
+      <hr class="divider">
+
+      <button type="submit" class="btn-submit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Создать аккаунт
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Уже есть аккаунт? <a href="/login">Войти</a>
+    </div>
+  </div>
+
+</body>
+</html>

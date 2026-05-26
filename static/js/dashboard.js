@@ -17,8 +17,8 @@ const state = {
 // 1. КАРТА (Leaflet)
 // ═══════════════════════════════════════════════════════
 const map = L.map('map', {
-  center: [51.22, 71.47],
-  zoom: 12,
+  center: [54.255, 69.465],
+  zoom: 13,
   zoomControl: true,
 });
 
@@ -48,11 +48,19 @@ function ndviColor(ndvi, layer) {
 
 function loadFields() {
   fetch('/api/fields')
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
     .then(data => {
       state.fieldsData = data;
       renderFields();
-    });
+      // Автоматически центрировать карту на полигонах
+      if (fieldsLayer) {
+        try { map.fitBounds(fieldsLayer.getBounds(), { padding: [30, 30] }); } catch(e) {}
+      }
+    })
+    .catch(err => console.error('[Agro-Twin] /api/fields error:', err));
 }
 
 function renderFields() {
@@ -64,9 +72,10 @@ function renderFields() {
       const val = state.currentLayer === 'anomaly' ? p.anomaly : p.ndvi;
       return {
         fillColor: ndviColor(val, state.currentLayer),
-        fillOpacity: 0.7,
-        color: state.selectedFieldId === p.id ? '#3a7d44' : '#c8d9bc',
-        weight: state.selectedFieldId === p.id ? 3 : 1.5,
+        fillOpacity: 0.65,
+        color: state.selectedFieldId === p.id ? '#1a5c24' : '#3a7d44',
+        weight: state.selectedFieldId === p.id ? 4 : 2.5,
+        opacity: 1,
       };
     },
     onEachFeature: (feature, layer) => {

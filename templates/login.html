@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agro-Twin · Вход</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ─── TOKENS (синхронизированы с landing.css) ─── */
+    :root {
+      --bg:        #f4f7f0;
+      --bg-card:   #ffffff;
+      --bg-card2:  #edf2e8;
+      --border:    #c8d9bc;
+      --accent:    #3a7d44;
+      --accent2:   #5a9e5f;
+      --accent3:   #8db548;
+      --danger:    #c0392b;
+      --text:      #1e2d1a;
+      --muted:     #6b8060;
+      --radius:    10px;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      --font-display: 'Inter', system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ─── Фоновая сетка ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* ─── Декоративные пятна ─── */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      opacity: 0.18;
+    }
+    .blob-1 { width: 400px; height: 400px; background: var(--accent);  top: -100px; left: -100px; }
+    .blob-2 { width: 300px; height: 300px; background: var(--accent3); bottom: -80px; right: -80px; }
+
+    /* ─── Логотип в углу ─── */
+    .corner-logo {
+      position: fixed;
+      top: 24px; left: 28px;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 16px;
+      letter-spacing: 3px;
+      color: var(--accent);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .corner-logo span { color: var(--muted); }
+
+    /* ─── Карточка входа ─── */
+    .auth-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 44px 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 4px 32px rgba(58,125,68,0.08);
+      animation: slideUp 0.4s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Заголовок карточки ─── */
+    .auth-badge {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 10px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    .auth-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 26px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .auth-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    /* ─── Форма ─── */
+    .field {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(58,125,68,0.12);
+    }
+
+    /* ─── Кнопка ─── */
+    .btn-submit {
+      width: 100%;
+      margin-top: 8px;
+      padding: 13px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover  { background: var(--accent2); }
+    .btn-submit:active { transform: scale(0.98); }
+
+    /* ─── Ошибка ─── */
+    .error-box {
+      background: rgba(192,57,43,0.08);
+      border: 1px solid rgba(192,57,43,0.3);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      color: var(--danger);
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─── Демо-аккаунты ─── */
+    .demo-box {
+      margin-top: 24px;
+      padding: 14px 16px;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .demo-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .demo-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .demo-row:last-child { border-bottom: none; }
+    .demo-row:hover .demo-login { color: var(--accent); }
+
+    .demo-login {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 13px;
+      transition: color 0.15s;
+    }
+
+    .demo-role {
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+
+    .demo-pass {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    /* ─── Ссылка на регистрацию ─── */
+    .auth-footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .auth-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .auth-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <a href="/" class="corner-logo">AGRO<span>·</span>TWIN</a>
+
+  <div class="auth-card">
+    <div class="auth-badge">🌿 Agro-Twin Platform</div>
+    <div class="auth-title">Вход в систему</div>
+    <div class="auth-sub">Мониторинг агроэкосистем · VMAE · TSN Dynamics</div>
+
+    {% if error %}
+    <div class="error-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <div class="field">
+        <label>Логин</label>
+        <input type="text" name="username" placeholder="admin" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <input type="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-submit">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>
+        Войти в систему
+      </button>
+    </form>
+
+    <!-- Демо-аккаунты -->
+    <div class="demo-box">
+      <div class="demo-label">Демо-аккаунты (нажми чтобы заполнить)</div>
+      <div class="demo-row" onclick="fill('admin','admin123')">
+        <span class="demo-login">admin</span>
+        <span class="demo-pass">admin123</span>
+        <span class="demo-role">Администратор</span>
+      </div>
+      <div class="demo-row" onclick="fill('viewer','viewer123')">
+        <span class="demo-login">viewer</span>
+        <span class="demo-pass">viewer123</span>
+        <span class="demo-role">Наблюдатель</span>
+      </div>
+    </div>
+
+    <div class="auth-footer">
+      Нет аккаунта? <a href="/register">Зарегистрироваться</a>
+    </div>
+  </div>
+
+  <script>
+    function fill(user, pass) {
+      document.querySelector('input[name="username"]').value = user;
+      document.querySelector('input[name="password"]').value = pass;
+    }
+  </script>
+</body>
+</html>

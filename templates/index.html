@@ -48,6 +48,15 @@
     <button class="db-lang-btn" data-lang="ru" onclick="dbSetLang('ru')">RU</button>
     <button class="db-lang-btn" data-lang="kz" onclick="dbSetLang('kz')">KZ</button>
   </div>
+  {% if user %}
+  <div style="display:flex;align-items:center;gap:8px;margin-left:8px">
+    <span style="font-size:11px;letter-spacing:1px;color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:3px 9px">
+      👤 {{ user.name }}
+      <span style="color:var(--accent);margin-left:4px">[{{ user.role }}]</span>
+    </span>
+    <a href="/logout" style="font-size:11px;letter-spacing:1px;color:#c0392b;border:1px solid rgba(192,57,43,.3);border-radius:6px;padding:3px 9px;text-decoration:none;">ВЫЙТИ</a>
+  </div>
+  {% endif %}
 </nav>
 
 <!-- ─── INFO BAR ────────────────────────────────────────────────────── -->
