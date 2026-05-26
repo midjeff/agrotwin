@@ -227,8 +227,9 @@ function loadDynamics(fieldId) {
 function initTimeseriesChart(data) {
   const ctx = document.getElementById('timeseries-chart').getContext('2d');
 
+  // Фильтруем null и отрицательные значения (облака, шум сенсора)
   const rawPoints  = data.dates
-    .map((d, i) => data.raw_ndvi[i] !== null ? { x: d, y: data.raw_ndvi[i] } : null)
+    .map((d, i) => (data.raw_ndvi[i] !== null && data.raw_ndvi[i] > 0) ? { x: d, y: data.raw_ndvi[i] } : null)
     .filter(Boolean);
 
   const twinPoints = data.dates.map((d, i) => ({ x: d, y: data.twin_ndvi[i] }));
@@ -242,21 +243,26 @@ function initTimeseriesChart(data) {
         {
           label: 'Raw NDVI',
           data: rawPoints,
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37,99,235,0.08)',
-          borderDash: [4, 4],
+          borderColor: 'rgba(59,130,246,0.9)',
+          backgroundColor: 'rgba(59,130,246,0.15)',
+          borderWidth: 1.5,
+          borderDash: [3, 3],
           pointRadius: 3,
-          pointBackgroundColor: '#2563eb',
-          tension: 0,
+          pointBackgroundColor: 'rgba(59,130,246,0.85)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 1,
+          pointHoverRadius: 5,
+          tension: 0.3,
           fill: false,
+          showLine: true,
         },
         {
           label: 'Digital Twin NDVI',
           data: twinPoints,
-          borderColor: '#3a7d44',
-          backgroundColor: 'rgba(58,125,68,0.08)',
+          borderColor: '#2d7d46',
+          backgroundColor: 'rgba(45,125,70,0.08)',
           pointRadius: 0,
-          borderWidth: 2,
+          borderWidth: 2.5,
           tension: 0.4,
           fill: true,
         },
@@ -376,8 +382,9 @@ function initLatentChart(data) {
           titleColor: '#1e2d1a',
           bodyColor: '#6b8060',
           callbacks: {
-            title: items => points[items[0].dataIndex].date,
+            title: items => (items && items[0] && points[items[0].dataIndex]) ? points[items[0].dataIndex].date : '',
             label: items => {
+              if (!items || !items[0] || !points[items[0].dataIndex]) return [];
               const p = points[items[0].dataIndex];
               return [
                 ` Z₁ (биомасса): ${p.x.toFixed(3)}`,

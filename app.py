@@ -5,11 +5,15 @@ Agro-Twin — главный файл Flask-приложения.
 """
 
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for, flash
+import json
 import random
 import math
 import hashlib
 import os
-import json
+import re
+import pandas as pd
+import numpy as np
+import re
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "agro-twin-secret-2024")
@@ -121,42 +125,38 @@ def get_fields():
 @login_required
 def get_dynamics(field_id):
     """
-    Возвращает временные ряды: Raw NDVI + Digital Twin NDVI.
-    В реальном проекте — загружай из Sentinel-2 + результаты VMAE.
+    Возвращает реальные временные ряды NDVI из NKAES_DigitalTwin_Features.csv.
+    Raw NDVI — данные Sentinel-2; -9999 = облачность (None на графике).
+    Digital Twin NDVI — Savitzky-Golay сглаживание (как в ноутбуке препода).
     """
-    # Генерируем 24 точки (2 года по месяцам)
-    dates = []
-    raw_ndvi = []
-    twin_ndvi = []
-
-    seed = sum(ord(c) for c in field_id)
-    random.seed(seed)
-
-    for i in range(24):
-        month = i % 12
-        # Сезонная кривая вегетации
-        seasonal = 0.3 + 0.5 * math.sin(math.pi * (month - 1) / 6) if month < 9 else \
-                   0.3 + 0.5 * math.sin(math.pi * (month - 1) / 6)
-        seasonal = max(0.1, min(0.95, seasonal))
-
-        year = 2023 + i // 12
-        dates.append(f"{year}-{month+1:02d}-15")
-        # Raw — с шумом и пропусками (облачность)
-        noise = random.uniform(-0.12, 0.12)
-        raw = round(max(0.05, min(0.95, seasonal + noise)), 3)
-        raw_ndvi.append(raw if random.random() > 0.15 else None)  # 15% пропусков
-        # Digital Twin — сглаженная восстановленная VMAE
-        twin_ndvi.append(round(seasonal + random.uniform(-0.03, 0.03), 3))
-
-    return jsonify({
-        "field_id": field_id,
-        "dates": dates,
-        "raw_ndvi": raw_ndvi,
-        "twin_ndvi": twin_ndvi
-    })
-
-
-# ─── API: Латентное пространство Z1-Z2 ────────────────────────────────────────
+    num = int(re.search(r"\d+", field_id).group())
+    csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "nkaes_features.csv")
+    df = pd.read_csv(csv_path, sep=";")
+    fdf = df[df["field_id"] == num].copy()
+    fdf["_date_parsed"] = pd.to_datetime(fdf["date"], format="%d.%m.%Y", errors="coerce")
+    fdf = fdf.sort_values("_date_parsed").drop(columns=["_date_parsed"])
+    fdf["NDVI"] = pd.to_numeric(fdf["NDVI"], errors="coerce")
+    fdf.loc[fdf["NDVI"] < -100, "NDVI"] = float("nan")
+    # Конвертируем DD.MM.YYYY → YYYY-MM-DD для Chart.js
+    def fmt_date(d):
+        try:
+            parts = str(d).strip().split('.')
+            if len(parts) == 3:
+                return f"{parts[2]}-{parts[1]}-{parts[0]}"
+        except:
+            pass
+        return str(d)
+    dates    = [fmt_date(d) for d in fdf["date"].tolist()]
+    raw_ndvi = [round(v, 4) if v == v else None for v in fdf["NDVI"]]
+    valid = fdf["NDVI"].interpolate(method="linear").fillna(method="bfill").fillna(method="ffill")
+    if len(valid) >= 7:
+        from scipy.signal import savgol_filter
+        smoothed = savgol_filter(valid.values, window_length=7, polyorder=2)
+    else:
+        smoothed = valid.values
+    # Clamp Digital Twin в диапазон [0, 1] — сглаживание может дать отрицательные
+    twin_ndvi = [round(max(0.0, min(1.0, float(v))), 4) for v in smoothed]
+    return jsonify({"field_id": field_id, "dates": dates, "raw_ndvi": raw_ndvi, "twin_ndvi": twin_ndvi})
 
 @app.route("/api/field/<field_id>/latent_space")
 @login_required
